@@ -1,0 +1,25 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      # Use the environment variable to log in to ECR
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin 343218197903.dkr.ecr.ap-southeast-2.amazonaws.com/dochub
+  build:
+    commands:
+      # Build the Docker image from the Dockerfile located in the DotnetCoreMultiArchApp directory.
+      - echo "Building the Docker image..."
+      - docker build -t 343218197903.dkr.ecr.ap-southeast-2.amazonaws.com/dochub:latest -f DotnetCoreMultiArchApp/Dockerfile.x86 .
+      - docker tag 343218197903.dkr.ecr.ap-southeast-2.amazonaws.com/dochub:latest 343218197903.dkr.ecr.ap-southeast-2.amazonaws.com/dochub:$CODEBUILD_RESOLVED_SOURCE_VERSION
+  post_build:
+    commands:
+      # Push the latest and versioned images to ECR.
+      - echo "Pushing the Docker images to ECR..."
+      - docker push 343218197903.dkr.ecr.ap-southeast-2.amazonaws.com/dochub:latest
+      - docker push 343218197903.dkr.ecr.ap-southeast-2.amazonaws.com/dochub:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      # This file is used by CodeDeploy to tell it which image to deploy.
+      - echo "Creating imagedefinitions.json..."
+      - printf '[{"name":"dochub","imageUri":"%s"}]' 343218197903.dkr.ecr.ap-southeast-2.amazonaws.com/dochub:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+artifacts:
+  files:
+    - imagedefinitions.json
